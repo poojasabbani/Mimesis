@@ -1,0 +1,43 @@
+content_data_sample/
+style_data_sample/
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Dataset archives
+*.zip
+
+# Ignore only the contents of experiment
+experiment/*
+
+# But keep final_exp
+!experiment/final_exp/
+
+# Ignore everything inside final_exp
+experiment/final_exp/*
+
+# Except the deployment model
+!experiment/final_exp/decoder_final.pth
+
+# User uploads
+# -----------------------------
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
