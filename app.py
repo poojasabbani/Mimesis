@@ -1,23 +1,30 @@
 import os
 import torch
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
+from flask import Flask, render_template, request,  send_from_directory
 from flask_wtf import FlaskForm
 from flask_bootstrap import Bootstrap
 from werkzeug.utils import secure_filename
 from wtforms import FileField, SubmitField, FloatField, HiddenField
-from wtforms.validators import InputRequired
 from PIL import Image
 from torchvision import transforms
-import io
+
 
 # Import your existing AdaIN code
 from utils.models import VGGEncoder, Decoder
-from utils.utils import adaptive_instance_normalization, calc_mean_std
+from utils.utils import adaptive_instance_normalization
 
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'supersecretkey'
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app.config['SECRET_KEY'] = os.environ.get(
+    "SECRET_KEY",
+    "dev_secret_key"
+)
+app.config['UPLOAD_FOLDER'] = os.path.join(
+    BASE_DIR,
+    "static",
+    "uploads"
+)
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 Bootstrap(app)
 
@@ -33,12 +40,38 @@ class UploadForm(FlaskForm):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-encoder = VGGEncoder('vgg_normalised.pth').to(device)
-decoder = Decoder().to(device)
-decoder.load_state_dict(torch.load(r'E:\Projects\Mimesis\experiment\final_exp\decoder_final.pth'))
+VGG_PATH = os.path.join(BASE_DIR, "vgg_normalised.pth")
 
+MODEL_PATH = os.path.join(
+    BASE_DIR,
+    "experiment",
+    "final_exp",
+    "decoder_final.pth"
+)
+
+encoder = VGGEncoder(VGG_PATH).to(device)
+decoder = Decoder().to(device)
+
+try:
+    decoder.load_state_dict(
+        torch.load(
+            MODEL_PATH,
+            map_location=device,
+            weights_only=True
+        )
+    )
+except FileNotFoundError:
+    raise RuntimeError(f"Model not found: {MODEL_PATH}")
+    
+    
 encoder.eval()
 decoder.eval()
+
+for param in encoder.parameters():
+    param.requires_grad = False
+
+for param in decoder.parameters():
+    param.requires_grad = False
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -123,11 +156,13 @@ def index():
             except Exception as e:
                 error = str(e)
     else:
+        errors=[]
+        
         if not content_filename:
-            error = 'Please upload content image'
+            errors.append("Please upload a content image")
         if not style_filename:
-            error = 'Please upload style image'
-
+            errors.append("Please upload a style image")
+        error = " ".join(errors)
     return render_template('index.html', form=form, result_image=result_image, content_image=content_filename,
                            style_image=style_filename, error=error)
 
