@@ -61,7 +61,7 @@ class VGGEncoder(nn.Module):
         )
         state_dict = torch.load(vgg_path,
                                 map_location="cpu",
-                                weights_only=False)
+                                weights_only=True)
         self.vgg.load_state_dict(state_dict)
         self.vgg = nn.Sequential(*list(self.vgg.children())[:31])
         enc_layers = list(self.vgg.children())

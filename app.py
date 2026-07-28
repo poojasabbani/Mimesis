@@ -49,10 +49,22 @@ MODEL_PATH = os.path.join(
     "decoder_final.pth"
 )
 
-encoder = VGGEncoder(VGG_PATH).to(device)
-decoder = Decoder().to(device)
+encoder = None
+decoder = None
 
-try:
+
+def load_models():
+    global encoder, decoder
+
+    if encoder is not None and decoder is not None:
+        return encoder, decoder
+
+    print("Loading VGG encoder...")
+    encoder = VGGEncoder(VGG_PATH).to(device)
+
+    print("Loading decoder...")
+    decoder = Decoder().to(device)
+
     decoder.load_state_dict(
         torch.load(
             MODEL_PATH,
@@ -60,18 +72,19 @@ try:
             weights_only=True
         )
     )
-except FileNotFoundError:
-    raise RuntimeError(f"Model not found: {MODEL_PATH}")
-    
-    
-encoder.eval()
-decoder.eval()
 
-for param in encoder.parameters():
-    param.requires_grad = False
+    encoder.eval()
+    decoder.eval()
 
-for param in decoder.parameters():
-    param.requires_grad = False
+    for param in encoder.parameters():
+        param.requires_grad = False
+
+    for param in decoder.parameters():
+        param.requires_grad = False
+
+    print("Models loaded successfully.")
+
+    return encoder, decoder
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -146,6 +159,7 @@ def index():
                 style_image = Image.open(style_path).convert('RGB')
 
                 alpha = float(form.alpha.data)
+                encoder, decoder = load_models()
                 stylized_image = style_transfer(content_image, style_image, encoder, decoder, alpha, device)
 
                 result_filename = 'stylized_' + content_filename
